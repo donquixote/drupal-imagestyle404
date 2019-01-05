@@ -40,8 +40,39 @@ function imagestyle404_menu_alter(array &$items) {
  *
  * @return mixed
  * @see \image_style_deliver()
+ * @see \drupal_deliver_page()
  */
 function _imagestyle404_image_style_deliver(array $style, $scheme) {
   $args = func_get_args();
-  return call_user_func_array('image_style_deliver', $args);
+
+  $result = call_user_func_array('image_style_deliver', $args);
+
+  if (MENU_ACCESS_DENIED === $result) {
+    return _imagestyle404_deliver_failure('403 Forbidden');
+  }
+
+  if (MENU_NOT_FOUND === $result) {
+    return _imagestyle404_deliver_failure('404 Not Found');
+  }
+
+  // This should be unreachable code, because image_style_deliver() never
+  // returns anything else.
+  return $result;
+}
+
+/**
+ * @param string $status
+ *
+ * @return null
+ *   This never happens, instead it always calls drupal_exit().
+ *   The return statement is a lazy way to make the IDE happy.
+ */
+function _imagestyle404_deliver_failure($status) {
+  drupal_add_http_header('Status', $status);
+  // See https://stackoverflow.com/a/3203394/246724
+  drupal_add_http_header('Content-type', 'image/png');
+  echo base64_decode('R0lGODlhAQABAJAAAP8AAAAAACH5BAUQAAAALAAAAAABAAEAAAICBAEAOw==');
+  drupal_exit();
+  // Tell the IDE that the function ends here.
+  return NULL;
 }
