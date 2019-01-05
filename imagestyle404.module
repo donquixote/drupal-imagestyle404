@@ -99,6 +99,28 @@ function _imagestyle404_image_style_deliver($style_name, $scheme = NULL, ...$tar
       'Too few url parts for image style generation: Original image path empty.');
   }
 
+  if (0
+    || !variable_get('image_allow_insecure_derivatives', FALSE)
+    || 0 === strpos(ltrim($target, '\/'), 'styles/')
+  ) {
+    if (!isset($_GET[IMAGE_DERIVATIVE_TOKEN])) {
+      return _imagestyle404_deliver_failure(
+        '403 Forbidden',
+        'Image derivative token parameter ("itok") is missing.');
+    }
+
+    $itok_actual = $_GET[IMAGE_DERIVATIVE_TOKEN];
+    $itok_expected = image_style_path_token(
+        $style_name,
+        $scheme . '://' . $target);
+
+    if ($itok_actual !== $itok_expected) {
+      return _imagestyle404_deliver_failure(
+        '403 Forbidden',
+        'Image derivative token parameter ("itok") mismatch.');
+    }
+  }
+
   $args = func_get_args();
   $args[0] = $style;
 
