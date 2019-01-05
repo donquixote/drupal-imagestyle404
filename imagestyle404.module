@@ -74,6 +74,14 @@ function _imagestyle404_image_style_deliver($style_name, $scheme = NULL) {
         'Too few url parts for image style generation: Scheme missing.');
   }
 
+  if (!file_stream_wrapper_valid_scheme($scheme)) {
+    return _imagestyle404_deliver_failure(
+      '404 Not Found',
+      format_string(
+          'Invalid file scheme @scheme.',
+          ['@scheme' => $scheme]));
+  }
+
   $args = func_get_args();
   $args[0] = $style;
 
