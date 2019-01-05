@@ -11,25 +11,31 @@ function imagestyle404_menu_alter(array &$items) {
   /** @var DrupalLocalStreamWrapper $public_stream_wrapper */
   $public_stream_wrapper = file_stream_wrapper_get_instance_by_scheme('public');
   $public_files_dir = $public_stream_wrapper->getDirectoryPath();
-  /* @see image_style_load() */
-  $original_router_path = $public_files_dir . '/styles/%image_style';
 
-  if (!isset($items[$original_router_path])) {
-    return;
+  foreach ([
+    $public_files_dir,
+    'system/files'
+  ] as $files_dir) {
+    /* @see image_style_load() */
+    $original_router_path = $files_dir . '/styles/%image_style';
+
+    if (!isset($items[$original_router_path])) {
+      continue;
+    }
+
+    $item = $items[$original_router_path];
+
+    if ('image_style_deliver' !== $item['page callback']) {
+      continue;
+    }
+
+    /* @see _imagestyle404_image_style_deliver() */
+    $item['page callback'] = '_imagestyle404_image_style_deliver';
+
+    unset($items[$original_router_path]);
+    // Same as the original path, but without the wildcard loader.
+    $items[$files_dir . '/styles/%'] = $item;
   }
-
-  $item = $items[$original_router_path];
-
-  if ('image_style_deliver' !== $item['page callback']) {
-    return;
-  }
-
-  /* @see _imagestyle404_image_style_deliver() */
-  $item['page callback'] = '_imagestyle404_image_style_deliver';
-
-  unset($items[$original_router_path]);
-  // Same as the original path, but without the wildcard loader.
-  $items[$public_files_dir . '/styles/%'] = $item;
 }
 
 /**
