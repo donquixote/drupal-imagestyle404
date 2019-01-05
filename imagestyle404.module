@@ -54,6 +54,20 @@ function _imagestyle404_image_style_deliver($style_name, $scheme = NULL) {
           ['@style' => $style_name]));
   }
 
+  if (empty($style)) {
+    // Core's image_style_deliver() contains a check for "!empty($style)", so we
+    // should do the same. This would occur if image_style_load() returns
+    // something other than false or an image style array.
+    return _imagestyle404_deliver_failure(
+      '404 Not Found',
+      format_string(
+        'Broken image style "@style_name": @style',
+        [
+          '@style_name' => $style_name,
+          '@style' => var_export($style, TRUE),
+        ]));
+  }
+
   if (NULL === $scheme) {
     return _imagestyle404_deliver_failure(
         '404 Not Found',
