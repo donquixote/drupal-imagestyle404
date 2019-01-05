@@ -62,13 +62,19 @@ function _imagestyle404_image_style_deliver(array $style, $scheme) {
 
 /**
  * @param string $status
+ * @param string|null $message
+ *   Custom message that will be added in a custom header.
  *
  * @return null
  *   This never happens, instead it always calls drupal_exit().
  *   The return statement is a lazy way to make the IDE happy.
  */
-function _imagestyle404_deliver_failure($status) {
+function _imagestyle404_deliver_failure($status, $message = NULL) {
   drupal_add_http_header('Status', $status);
+  if (NULL !== $message) {
+    // Custom http header: See https://stackoverflow.com/a/19640336/246724
+    drupal_add_http_header('X-Drupal-imagestyle404-Message', $message);
+  }
   // See https://stackoverflow.com/a/3203394/246724
   drupal_add_http_header('Content-type', 'image/png');
   echo base64_decode('R0lGODlhAQABAJAAAP8AAAAAACH5BAUQAAAALAAAAAABAAEAAAICBAEAOw==');
