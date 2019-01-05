@@ -42,7 +42,14 @@ function imagestyle404_menu_alter(array &$items) {
  * @see \image_style_deliver()
  * @see \drupal_deliver_page()
  */
-function _imagestyle404_image_style_deliver(array $style, $scheme) {
+function _imagestyle404_image_style_deliver(array $style, $scheme = NULL) {
+
+  if (NULL === $scheme) {
+    return _imagestyle404_deliver_failure(
+        '404 Not Found',
+        'Too few url parts for image style generation: Scheme missing.');
+  }
+
   $args = func_get_args();
 
   $result = call_user_func_array('image_style_deliver', $args);
