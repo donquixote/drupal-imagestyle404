@@ -127,22 +127,84 @@ function _imagestyle404_image_style_deliver($style_name, $scheme = NULL, ...$tar
     }
   }
 
-  $args = func_get_args();
-  $args[0] = $style;
+  $image_uri = $scheme . '://' . $target;
+  $derivative_uri = image_style_path($style['name'], $image_uri);
 
-  $result = call_user_func_array('image_style_deliver', $args);
-
-  if (MENU_ACCESS_DENIED === $result) {
-    return _imagestyle404_deliver_failure('403 Forbidden');
+  // If using the private scheme, let other modules provide headers and
+  // control access to the file.
+  if ($scheme == 'private') {
+    if (file_exists($derivative_uri)) {
+      file_download($scheme, file_uri_target($derivative_uri));
+    }
+    else {
+      $headers = file_download_headers($image_uri);
+      if (empty($headers)) {
+        return _imagestyle404_deliver_failure(
+          '403 Forbidden',
+          format_string(
+              'Access denied for private file "@file".',
+              ['@file' => $image_uri]));
+      }
+      if (count($headers)) {
+        foreach ($headers as $name => $value) {
+          drupal_add_http_header($name, $value);
+        }
+      }
+    }
   }
 
-  if (MENU_NOT_FOUND === $result) {
-    return _imagestyle404_deliver_failure('404 Not Found');
+  // Confirm that the original source image exists before trying to process it.
+  if (!is_file($image_uri)) {
+    watchdog('image', 'Source image at %source_image_path not found while trying to generate derivative image at %derivative_path.',  array('%source_image_path' => $image_uri, '%derivative_path' => $derivative_uri));
+    return _imagestyle404_deliver_failure(
+      '404 Not Found',
+      format_string(
+        'Source image file not found: @file.',
+        ['@file' => $image_uri]));
   }
 
-  // This should be unreachable code, because image_style_deliver() never
-  // returns anything else.
-  return $result;
+  // Don't start generating the image if the derivative already exists or if
+  // generation is in progress in another thread.
+  $lock_name = 'image_style_deliver:' . $style['name'] . ':' . drupal_hash_base64($image_uri);
+  if (!file_exists($derivative_uri)) {
+    $lock_acquired = lock_acquire($lock_name);
+    if (!$lock_acquired) {
+      // Tell client to retry again in 3 seconds. Currently no browsers are known
+      // to support Retry-After.
+      drupal_add_http_header('Status', '503 Service Unavailable');
+      drupal_add_http_header('Content-Type', 'text/html; charset=utf-8');
+      drupal_add_http_header('Retry-After', 3);
+      print t('Image generation in progress. Try again shortly.');
+      drupal_exit();
+      exit();
+    }
+  }
+
+  // Try to generate the image, unless another thread just did it while we were
+  // acquiring the lock.
+  $success = file_exists($derivative_uri) || image_style_create_derivative($style, $image_uri, $derivative_uri);
+
+  if (!empty($lock_acquired)) {
+    lock_release($lock_name);
+  }
+
+  if (!$success) {
+    watchdog('image', 'Unable to generate the derived image located at %path.', array('%path' => $derivative_uri));
+    drupal_add_http_header('Status', '500 Internal Server Error');
+    drupal_add_http_header('Content-Type', 'text/html; charset=utf-8');
+    print t('Error generating image.');
+    drupal_exit();
+    exit();
+  }
+
+  $image = image_load($derivative_uri);
+  file_transfer(
+    $image->source,
+    [
+      'Content-Type' => $image->info['mime_type'],
+      'Content-Length' => $image->info['file_size'],
+    ]);
+  exit();
 }
 
 /**
