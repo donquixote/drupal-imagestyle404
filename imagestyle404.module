@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * Implements hook_menu_alter()
+ *
+ * @param array $items
+ *   Format: $[$files_dir . '/styles/%image_style'] = $router_item
+ */
+function imagestyle404_menu_alter(array &$items) {
+
+  /** @var DrupalLocalStreamWrapper $public_stream_wrapper */
+  $public_stream_wrapper = file_stream_wrapper_get_instance_by_scheme('public');
+  $public_files_dir = $public_stream_wrapper->getDirectoryPath();
+  /* @see image_style_load() */
+  $original_router_path = $public_files_dir . '/styles/%image_style';
+
+  if (!isset($items[$original_router_path])) {
+    return;
+  }
+
+  $item = $items[$original_router_path];
+
+  if ('image_style_deliver' !== $item['page callback']) {
+    return;
+  }
+
+  /* @see _imagestyle404_image_style_deliver() */
+  $item['page callback'] = '_imagestyle404_image_style_deliver';
+
+  $item[$original_router_path] = $item;
+}
+
+/**
+ * Page callback. Replaces image_style_deliver().
+ *
+ * @param array $style
+ *   The image style definition array.
+ * @param string $scheme
+ *   The file scheme, for example 'public' for public files.
+ *
+ * @return mixed
+ * @see \image_style_deliver()
+ */
+function _imagestyle404_image_style_deliver(array $style, $scheme) {
+  $args = func_get_args();
+  return call_user_func_array('image_style_deliver', $args);
+}

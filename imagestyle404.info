@@ -1,0 +1,5 @@
+name = Image style 404
+description = Modifies the 404 behavior for image styles, serving a 404 image instead of an html page.
+core = 7.x
+
+dependencies[] = image
