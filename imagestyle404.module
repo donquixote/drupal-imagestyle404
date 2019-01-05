@@ -39,12 +39,15 @@ function imagestyle404_menu_alter(array &$items) {
  *   The image style name.
  * @param string $scheme
  *   The file scheme, for example 'public' for public files.
+ * @param string[] $target_fragments
+ *   Fragment of the original image path.
+ *   This path is called '$target' in image_style_deliver().
  *
  * @return mixed
  * @see \image_style_deliver()
  * @see \drupal_deliver_page()
  */
-function _imagestyle404_image_style_deliver($style_name, $scheme = NULL) {
+function _imagestyle404_image_style_deliver($style_name, $scheme = NULL, ...$target_fragments) {
 
   if (FALSE === $style = image_style_load($style_name)) {
     return _imagestyle404_deliver_failure(
@@ -80,6 +83,20 @@ function _imagestyle404_image_style_deliver($style_name, $scheme = NULL) {
       format_string(
           'Invalid file scheme @scheme.',
           ['@scheme' => $scheme]));
+  }
+
+  if (array() === $target_fragments) {
+    return _imagestyle404_deliver_failure(
+        '404 Not Found',
+        'Too few url parts for image style generation: Original image path missing.');
+  }
+
+  $target = implode('/', $target_fragments);
+
+  if ('' === $target) {
+    return _imagestyle404_deliver_failure(
+      '404 Not Found',
+      'Too few url parts for image style generation: Original image path empty.');
   }
 
   $args = func_get_args();
