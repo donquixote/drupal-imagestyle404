@@ -27,14 +27,16 @@ function imagestyle404_menu_alter(array &$items) {
   /* @see _imagestyle404_image_style_deliver() */
   $item['page callback'] = '_imagestyle404_image_style_deliver';
 
-  $item[$original_router_path] = $item;
+  unset($items[$original_router_path]);
+  // Same as the original path, but without the wildcard loader.
+  $items[$public_files_dir . '/styles/%'] = $item;
 }
 
 /**
  * Page callback. Replaces image_style_deliver().
  *
- * @param array $style
- *   The image style definition array.
+ * @param string $style_name
+ *   The image style name.
  * @param string $scheme
  *   The file scheme, for example 'public' for public files.
  *
@@ -42,7 +44,15 @@ function imagestyle404_menu_alter(array &$items) {
  * @see \image_style_deliver()
  * @see \drupal_deliver_page()
  */
-function _imagestyle404_image_style_deliver(array $style, $scheme = NULL) {
+function _imagestyle404_image_style_deliver($style_name, $scheme = NULL) {
+
+  if (FALSE === $style = image_style_load($style_name)) {
+    return _imagestyle404_deliver_failure(
+      '404 Not Found',
+      format_string(
+          'Unknown image style "@style".',
+          ['@style' => $style_name]));
+  }
 
   if (NULL === $scheme) {
     return _imagestyle404_deliver_failure(
@@ -51,6 +61,7 @@ function _imagestyle404_image_style_deliver(array $style, $scheme = NULL) {
   }
 
   $args = func_get_args();
+  $args[0] = $style;
 
   $result = call_user_func_array('image_style_deliver', $args);
 
